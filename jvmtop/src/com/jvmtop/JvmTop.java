@@ -103,6 +103,10 @@ public class JvmTop
         .acceptsAll(Arrays.asList(new String[] { "p", "pid" }),
             "PID to connect to").withRequiredArg().ofType(Integer.class);
 
+    parser
+        .acceptsAll(Arrays.asList(new String[] { "w", "threadnamewidth" }),
+            "Thread name display width in detail mode").withRequiredArg().ofType(Integer.class);
+
     return parser;
   }
 
@@ -136,6 +140,8 @@ public class JvmTop
     Integer threadlimit = null;
 
     boolean threadLimitEnabled = true;
+
+    Integer threadNameWidth = null;
 
     if (a.hasArgument("delay"))
     {
@@ -179,6 +185,11 @@ public class JvmTop
       logger.fine("Verbosity mode.");
     }
 
+    if (a.hasArgument("threadnamewidth"))
+    {
+      threadNameWidth = (Integer) a.valueOf("threadnamewidth");
+    }
+
     if (sysInfoOption)
     {
       outputSystemProps();
@@ -205,6 +216,10 @@ public class JvmTop
           if (threadlimit != null)
           {
             vmDetailView.setNumberOfDisplayedThreads(threadlimit);
+          }
+          if (threadNameWidth != null)
+          {
+            vmDetailView.setThreadNameDisplayWidth_(threadNameWidth);
           }
           jvmTop.run(vmDetailView);
 
