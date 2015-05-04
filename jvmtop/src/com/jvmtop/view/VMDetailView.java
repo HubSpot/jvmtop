@@ -46,9 +46,9 @@ public class VMDetailView extends AbstractConsoleView
 
   private boolean         sortByTotalCPU_         = false;
 
-  private int             numberOfDisplayedThreads_ = 10;
+  private int             numberOfDisplayedThreads_ = 30;
 
-  private int             threadNameDisplayWidth_   = 30;
+  private int             threadNameDisplayWidth_   = 70;
 
   private boolean         displayedThreadLimit_     = true;
 
