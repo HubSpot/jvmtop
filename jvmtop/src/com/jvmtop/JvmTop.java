@@ -198,15 +198,16 @@ public class JvmTop
     {
       JvmTop jvmTop = new JvmTop();
       jvmTop.setDelay(delay);
-      jvmTop.setMaxIterations(iterations);
       if (pid == null)
       {
+        jvmTop.setMaxIterations(iterations);
         jvmTop.run(new VMOverviewView());
       }
       else
       {
         if (profileMode)
         {
+          jvmTop.setMaxIterations(iterations);
           jvmTop.run(new VMProfileView(pid));
         }
         else
@@ -221,6 +222,7 @@ public class JvmTop
           {
             vmDetailView.setThreadNameDisplayWidth_(threadNameWidth);
           }
+          jvmTop.setMaxIterations(iterations + 1);
           jvmTop.run(vmDetailView);
 
         }
@@ -284,13 +286,20 @@ public class JvmTop
       int iterations = 0;
       while (!view.shouldExit())
       {
-        if (maxIterations_ > 1 || maxIterations_ == -1)
+        if (iterations == 0 && view instanceof VMDetailView)
         {
-          clearTerminal();
+          ((VMDetailView)view).update();
+        } else
+        {
+          if (maxIterations_ > 1 || maxIterations_ == -1)
+          {
+            clearTerminal();
+          }
+          printTopBar();
+          view.printView();
+          System.out.flush();
         }
-        printTopBar();
-        view.printView();
-        System.out.flush();
+
         iterations++;
         if (iterations >= maxIterations_ && maxIterations_ > 0)
         {
