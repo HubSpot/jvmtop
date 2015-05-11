@@ -8,7 +8,7 @@ rm jvmtop*.rpm
 fpm -s dir\
         -t rpm \
         -n jvmtop \
-        -v 0.8.1 \
+        -v 0.8.2 \
         --iteration 1hs \
         --prefix /usr/local \
         -m "Eric Abbott <eabbott@hubspot.com>" \
