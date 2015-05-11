@@ -39,53 +39,47 @@ import com.jvmtop.openjdk.tools.LocalVirtualMachine;
  * @author paru
  *
  */
-public class VMDetailView extends AbstractConsoleView
-{
+public class VMDetailView extends AbstractConsoleView {
 
-  private VMInfo          vmInfo_;
+  private VMInfo vmInfo_;
 
-  private boolean         sortByTotalCPU_         = false;
+  private boolean sortByTotalCPU_ = false;
 
-  private int             numberOfDisplayedThreads_ = 30;
+  private int numberOfDisplayedThreads_ = 30;
 
-  private int             threadNameDisplayWidth_   = 70;
+  private int threadNameDisplayWidth_ = 70;
 
-  private boolean         displayedThreadLimit_     = true;
+  private boolean displayedThreadLimit_ = true;
 
   //TODO: refactor
   private Map<Long, Long> previousThreadCPUMillis = new HashMap<Long, Long>();
+  private Map<Long, Long> currentThreadCPUMillis = new HashMap<Long, Long>();
 
-  public VMDetailView(int vmid) throws Exception
-  {
+  public VMDetailView(int vmid) throws Exception {
     LocalVirtualMachine localVirtualMachine = LocalVirtualMachine
         .getLocalVirtualMachine(vmid);
     vmInfo_ = VMInfo.processNewVM(localVirtualMachine, vmid);
   }
 
-  public boolean isSortByTotalCPU()
-  {
+  public boolean isSortByTotalCPU() {
     return sortByTotalCPU_;
   }
 
-  public void setSortByTotalCPU(boolean sortByTotalCPU)
-  {
+  public void setSortByTotalCPU(boolean sortByTotalCPU) {
     sortByTotalCPU_ = sortByTotalCPU;
   }
 
   @Override
-  public void printView() throws Exception
-  {
-    vmInfo_.update();
+  public void printView() throws Exception {
+    update();
 
-    if (vmInfo_.getState() == VMInfoState.ATTACHED_UPDATE_ERROR)
-    {
+    if (vmInfo_.getState() == VMInfoState.ATTACHED_UPDATE_ERROR) {
       System.out
           .println("ERROR: Could not fetch telemetries - Process terminated?");
       exit();
       return;
     }
-    if (vmInfo_.getState() != VMInfoState.ATTACHED)
-    {
+    if (vmInfo_.getState() != VMInfoState.ATTACHED) {
       System.out.println("ERROR: Could not attach to process.");
       exit();
       return;
@@ -94,8 +88,7 @@ public class VMDetailView extends AbstractConsoleView
     Map<String, String> properties = vmInfo_.getSystemProperties();
 
     String command = properties.get("sun.java.command");
-    if (command != null)
-    {
+    if (command != null) {
       String[] commandArray = command.split(" ");
 
       List<String> commandList = Arrays.asList(commandArray);
@@ -104,28 +97,20 @@ public class VMDetailView extends AbstractConsoleView
       System.out.printf(" PID %d: %s %n", vmInfo_.getId(), commandArray[0]);
 
       String argJoin = join(commandList, " ");
-      if (argJoin.length() > 67)
-      {
+      if (argJoin.length() > 67) {
         System.out.printf(" ARGS: %s[...]%n", leftStr(argJoin, 67));
-      }
-      else
-      {
+      } else {
         System.out.printf(" ARGS: %s%n", argJoin);
       }
-    }
-    else
-    {
+    } else {
       System.out.printf(" PID %d: %n", vmInfo_.getId());
       System.out.printf(" ARGS: [UNKNOWN] %n");
     }
 
     String join = join(vmInfo_.getRuntimeMXBean().getInputArguments(), " ");
-    if (join.length() > 65)
-    {
+    if (join.length() > 65) {
       System.out.printf(" VMARGS: %s[...]%n", leftStr(join, 65));
-    }
-    else
-    {
+    } else {
       System.out.printf(" VMARGS: %s%n", join);
     }
 
@@ -155,6 +140,22 @@ public class VMDetailView extends AbstractConsoleView
 
   }
 
+  public void update() throws Exception {
+    vmInfo_.update();
+
+    if (vmInfo_.getThreadMXBean().isThreadCpuTimeSupported())
+    {
+      previousThreadCPUMillis = currentThreadCPUMillis;
+
+      Map<Long, Long> newThreadCPUMillis = new HashMap<Long, Long>();
+      for (Long tid : vmInfo_.getThreadMXBean().getAllThreadIds()) {
+        newThreadCPUMillis.put(tid, vmInfo_.getThreadMXBean().getThreadCpuTime(tid));
+      }
+
+      currentThreadCPUMillis = newThreadCPUMillis;
+    }
+  }
+
   /**
    * @throws Exception
    */
@@ -167,22 +168,14 @@ public class VMDetailView extends AbstractConsoleView
     if (vmInfo_.getThreadMXBean().isThreadCpuTimeSupported())
     {
 
-      //TODO: move this into VMInfo?
-      Map<Long, Long> newThreadCPUMillis = new HashMap<Long, Long>();
-
       Map<Long, Long> cpuTimeMap = new TreeMap<Long, Long>();
 
-      for (Long tid : vmInfo_.getThreadMXBean().getAllThreadIds())
+      for (Long tid : currentThreadCPUMillis.keySet())
       {
-        long threadCpuTime = vmInfo_.getThreadMXBean().getThreadCpuTime(tid);
-        long deltaThreadCpuTime = 0;
         if (previousThreadCPUMillis.containsKey(tid))
         {
-          deltaThreadCpuTime = threadCpuTime - previousThreadCPUMillis.get(tid);
-
-          cpuTimeMap.put(tid, deltaThreadCpuTime);
+          cpuTimeMap.put(tid, currentThreadCPUMillis.get(tid) - previousThreadCPUMillis.get(tid));
         }
-        newThreadCPUMillis.put(tid, threadCpuTime);
       }
 
       cpuTimeMap = sortByValue(cpuTimeMap, true);
@@ -211,16 +204,6 @@ public class VMDetailView extends AbstractConsoleView
                   .getProcessCpuTime(), 1), getBlockedThread(info));
         }
       }
-      if (newThreadCPUMillis.size() >= numberOfDisplayedThreads_
-          && displayedThreadLimit_)
-      {
-
-        System.out
-.printf(
-            " Note: Only top %d threads (according cpu load) are shown!",
-            numberOfDisplayedThreads_);
-      }
-      previousThreadCPUMillis = newThreadCPUMillis;
     }
     else
     {
